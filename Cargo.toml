@@ -11,3 +11,5 @@ hyper = "0.13"
 hyper-tls = "0.4.1"
 tokio = { version = "0.2", features = ["full"] }
 html5ever = "0.25.1"
+markup5ever = "0.10.0"
+scraper = "0.12.0"
