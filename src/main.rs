@@ -3,23 +3,8 @@ use std::time::Instant;
 use hyper::Client;
 use hyper_tls::HttpsConnector;
 
-use std::default::Default;
-use std::io::{self, Write};
-use std::str::from_utf8;
-
-use scraper::{ElementRef, Html, Node, Selector};
-
-fn parse_known_colors(part_color_page: &Html) -> Vec<&str> {
-    let td_selector = Selector::parse(r#"div[class="pciColorTitle"]"#).unwrap();
-    let tds = part_color_page.select(&td_selector);
-    let known_colors = tds.last().unwrap().next_siblings();
-    known_colors
-        .filter_map(|color_node| match ElementRef::wrap(color_node) {
-            Some(element) => element.text().next(),
-            None => None,
-        })
-        .collect::<Vec<&str>>()
-}
+use libtrowel::parse_known_colors;
+use scraper::Html;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

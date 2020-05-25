@@ -13,3 +13,4 @@ tokio = { version = "0.2", features = ["full"] }
 html5ever = "0.25.1"
 markup5ever = "0.10.0"
 scraper = "0.12.0"
+cssparser = "0.27.2"
