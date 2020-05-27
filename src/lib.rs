@@ -1,3 +1,4 @@
+use scraper::html::Select;
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
@@ -28,16 +29,19 @@ impl error::Error for HtmlParsingError {
     }
 }
 
-pub struct ColorTable {
+#[derive(Debug)]
+pub struct ColorGuide {
     id_to_name: HashMap<i8, String>,
     name_to_id: HashMap<String, i8>,
 }
 
+#[derive(Debug)]
 pub struct Color {
     name: String,
     id: i8,
 }
 
+#[derive(Debug)]
 pub struct Part {
     known_colors: Vec<Color>,
 }
@@ -58,10 +62,26 @@ pub fn parse_known_colors(part_color_page: &Html) -> Result<Vec<&str>, HtmlParsi
         .collect::<Vec<&str>>())
 }
 
-pub fn parse_color_table(part_table_page: &Html) -> Result<ColorTable, HtmlParsingError> {
-    let td_selector = Selector::parse(r#"table[id="id-main-legacy-table"]"#)
+fn walk_color_tree<'a>(table_selector: Select) -> Option<ElementRef<'a>> {
+    let color_table = table_selector.last()?;
+    let tbody = ElementRef::wrap(color_table.last_child()?)?;
+    println!("{:?}", tbody.value());
+    let tr = ElementRef::wrap(tbody.first_child()?)?;
+    println!("{:?}", tr.value());
+    let td = ElementRef::wrap(tr.last_child()?)?;
+    println!("{:?}", td.value());
+    for element in td.children() {
+        println!("{:?}", element.value());
+    }
+    None
+}
+
+pub fn parse_color_guide(part_guide_page: &Html) -> Result<ColorGuide, HtmlParsingError> {
+    let table_selector = Selector::parse(r#"table[id="id-main-legacy-table"]"#)
         .map_err(|_| HtmlParsingError::Select)?;
-    Ok(ColorTable {
+    let color_table_selector = part_guide_page.select(&table_selector);
+    walk_color_tree(color_table_selector);
+    Ok(ColorGuide {
         id_to_name: HashMap::new(),
         name_to_id: HashMap::new(),
     })
