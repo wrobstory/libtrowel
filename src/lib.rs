@@ -1,9 +1,8 @@
-use scraper::html::Select;
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
 
-use scraper::{ElementRef, Html, Selector};
+use nipper::Document;
 
 #[derive(Debug, Clone)]
 pub enum HtmlParsingError {
@@ -46,43 +45,18 @@ pub struct Part {
     known_colors: Vec<Color>,
 }
 
-pub fn parse_known_colors(part_color_page: &Html) -> Result<Vec<&str>, HtmlParsingError> {
-    let td_selector =
-        Selector::parse(r#"div[class="pciColorTitle"]"#).map_err(|_| HtmlParsingError::Select)?;
-    let tds = part_color_page.select(&td_selector);
-    let known_colors = match tds.last() {
-        Some(td) => td.next_siblings(),
-        None => return Err(HtmlParsingError::StructuralError),
-    };
-    Ok(known_colors
-        .filter_map(|color_node| match ElementRef::wrap(color_node) {
-            Some(element) => element.text().next(),
-            None => None,
-        })
-        .collect::<Vec<&str>>())
-}
-
-fn walk_color_tree<'a>(table_selector: Select) -> Option<ElementRef<'a>> {
-    let color_table = table_selector.last()?;
-    let tbody = ElementRef::wrap(color_table.last_child()?)?;
-    println!("{:?}", tbody.value());
-    let tr = ElementRef::wrap(tbody.first_child()?)?;
-    println!("{:?}", tr.value());
-    let td = ElementRef::wrap(tr.last_child()?)?;
-    println!("{:?}", td.value());
-    for element in td.children() {
-        println!("{:?}", element.value());
-    }
-    None
-}
-
-pub fn parse_color_guide(part_guide_page: &Html) -> Result<ColorGuide, HtmlParsingError> {
-    let table_selector = Selector::parse(r#"table[id="id-main-legacy-table"]"#)
-        .map_err(|_| HtmlParsingError::Select)?;
-    let color_table_selector = part_guide_page.select(&table_selector);
-    walk_color_tree(color_table_selector);
-    Ok(ColorGuide {
-        id_to_name: HashMap::new(),
-        name_to_id: HashMap::new(),
-    })
+// TODO: Resultify this thing
+pub fn parse_known_colors(part_color_page: &Document) -> Result<Vec<String>, HtmlParsingError> {
+    let tdr = part_color_page
+        .select("table.pciColorInfoTable")
+        .select("tbody")
+        .select("tr")
+        .last()
+        .select("span")
+        .select("a")
+        .iter()
+        .map(|color| String::from(color.text()))
+        .filter(|x| !x.starts_with("(Not Applicable)"))
+        .collect::<Vec<String>>();
+    Ok(tdr)
 }
