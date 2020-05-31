@@ -10,7 +10,7 @@ use std::time::Instant;
 use hyper::{Client, Response};
 use hyper_tls::HttpsConnector;
 
-use libtrowel::parse_known_colors;
+use libtrowel::{parse_known_colors, parse_color_guide};
 use nipper::Document;
 
 type HttpsClient = Client<HttpsConnector<HttpConnector>>;
@@ -29,13 +29,13 @@ impl From<PartPageType> for String {
     }
 }
 
-async fn fetch_page(client: HttpsClient, uri: &String) -> Result<Bytes, hyper::Error> {
+async fn fetch_page(client: &HttpsClient, uri: &String) -> Result<Bytes, hyper::Error> {
     let resp = client.get(uri.parse().unwrap()).await?;
     hyper::body::to_bytes(resp.into_body()).await
 }
 
 async fn fetch_part_page(
-    client: HttpsClient,
+    client: &HttpsClient,
     part_number: i32,
     part_page_type: PartPageType,
 ) -> Result<Bytes, hyper::Error> {
@@ -47,7 +47,7 @@ async fn fetch_part_page(
     fetch_page(client, &part_uri).await
 }
 
-async fn fetch_color_guide_page(client: HttpsClient) -> Result<Bytes, hyper::Error> {
+async fn fetch_color_guide_page(client: &HttpsClient) -> Result<Bytes, hyper::Error> {
     let color_guide_uri = "https://www.bricklink.com/catalogColors.asp";
     fetch_page(client, &color_guide_uri.to_string()).await
 }
@@ -56,15 +56,15 @@ async fn fetch_color_guide_page(client: HttpsClient) -> Result<Bytes, hyper::Err
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
-    // let part_uri = "https://www.bricklink.com/v2/catalog/catalogitem.page?P=92593#T=C";
-    let html_bytes = fetch_part_page(client, 92593, PartPageType::Color).await?;
-    // let parsed = Html::parse_document(&String::from_utf8(html_bytes.to_vec()).unwrap());
-    // let colors = parse_known_colors(&parsed);
-    // println!("{:?}", colors);
+    let part_page = fetch_part_page(&client, 92593, PartPageType::Color).await?;
 
-    let colors_html = Document::from(&String::from_utf8(html_bytes.to_vec()).unwrap());
+    let colors_html = Document::from(&String::from_utf8(part_page.to_vec()).unwrap());
     let colors = parse_known_colors(&colors_html);
     println!("{:?}", colors);
+
+    let color_guide = fetch_color_guide_page(&client).await?;
+    let color_guide_html = Document::from(&String::from_utf8(color_guide.to_vec()).unwrap());
+    let color_guide = parse_color_guide(&color_guide_html);
 
     Ok(())
 }

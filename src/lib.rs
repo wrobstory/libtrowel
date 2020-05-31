@@ -2,23 +2,17 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 
-use nipper::Document;
+use nipper::{Document, Selection};
 
 #[derive(Debug, Clone)]
-pub enum HtmlParsingError {
-    StructuralError,
-    Select,
-}
+pub struct HtmlParsingError;
 
 impl fmt::Display for HtmlParsingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            HtmlParsingError::StructuralError => write!(
-                f,
-                "found unexpected HTML structure. Page HTML may have changed"
-            ),
-            HtmlParsingError::Select => write!(f, "error parsing css selector"),
-        }
+        write!(
+            f,
+            "found unexpected HTML structure. Page HTML may have changed"
+        )
     }
 }
 
@@ -35,28 +29,53 @@ pub struct ColorGuide {
 }
 
 #[derive(Debug)]
-pub struct Color {
-    name: String,
+pub struct Color<'a> {
+    name: &'a str,
     id: i8,
 }
 
 #[derive(Debug)]
-pub struct Part {
-    known_colors: Vec<Color>,
+pub struct Part<'a> {
+    known_colors: Vec<Color<'a>>,
 }
 
-// TODO: Resultify this thing
-pub fn parse_known_colors(part_color_page: &Document) -> Result<Vec<String>, HtmlParsingError> {
-    let tdr = part_color_page
-        .select("table.pciColorInfoTable")
-        .select("tbody")
-        .select("tr")
+pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
+    part_color_page
+        .try_select("table.pciColorInfoTable")?
+        .try_select("tbody")?
+        .try_select("tr")?
         .last()
-        .select("span")
-        .select("a")
+        .try_select("span")?
+        .try_select("a")
+}
+
+
+pub fn parse_known_colors(part_color_page: &Document) -> Result<Vec<String>, HtmlParsingError> {
+    match select_color_anchors(part_color_page) {
+        None => Err(HtmlParsingError),
+        Some(a) => Ok(a
+            .iter()
+            .map(|color| String::from(color.text()))
+            .filter(|x| !x.starts_with("(Not Applicable)"))
+            .collect::<Vec<String>>()),
+    }
+}
+
+pub fn select_color_guide_rows(color_guide_page: &Document) -> Option<Selection> {
+    color_guide_page
+        .try_select(r#"table[id="id-main-legacy-table"]"#)?
+        .try_select("tbody")?
+        .try_select("tr")?
+        .try_select("td")?
+        .try_select("table")
+
+}
+
+pub fn parse_color_guide(color_guide_page: &Document) -> Result<(), HtmlParsingError> {
+    select_color_guide_rows(color_guide_page)
         .iter()
-        .map(|color| String::from(color.text()))
-        .filter(|x| !x.starts_with("(Not Applicable)"))
-        .collect::<Vec<String>>();
-    Ok(tdr)
+        .for_each(|x| {
+            println!("{:?}", x.html());
+        });
+    Ok(())
 }
