@@ -64,15 +64,19 @@ pub fn parse_known_colors(part_color_page: &Document) -> Result<Vec<String>, Htm
 pub fn select_color_guide_rows(color_guide_page: &Document) -> Option<Selection> {
     color_guide_page
         .try_select(r#"table[id="id-main-legacy-table"]"#)?
-        .try_select("tbody")?
-        .try_select("tr")?
-        .try_select("td")?
-        .try_select("table")
+        .try_select(r#"table[border="0"][cellpadding="1"][cellspacing="0"]"#)?
+        .try_select("tr:nth-child(n + 2)")
+        // .try_select(r#":not([height="20"])"#)
+}
 
+pub fn select_color_id_from_row<'a>(color_guide_row: &'a Selection) -> Option<Selection<'a>> {
+    color_guide_row
+        .try_select("td")?
+        .try_select(":first-child")
 }
 
 pub fn parse_color_guide(color_guide_page: &Document) -> Result<(), HtmlParsingError> {
-    select_color_guide_rows(color_guide_page)
+    select_color_guide_rows(color_guide_page).unwrap()
         .iter()
         .for_each(|x| {
             println!("{:?}", x.html());
