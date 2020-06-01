@@ -10,7 +10,7 @@ use std::time::Instant;
 use hyper::{Client, Response};
 use hyper_tls::HttpsConnector;
 
-use libtrowel::{parse_known_colors, parse_color_guide};
+use libtrowel::{parse_color_guide, parse_known_colors};
 use nipper::Document;
 
 type HttpsClient = Client<HttpsConnector<HttpConnector>>;
@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let color_guide = fetch_color_guide_page(&client).await?;
     let color_guide_html = Document::from(&String::from_utf8(color_guide.to_vec()).unwrap());
     let color_guide = parse_color_guide(&color_guide_html);
+    println!("{:?}", color_guide);
 
     Ok(())
 }
