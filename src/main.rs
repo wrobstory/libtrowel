@@ -58,14 +58,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::builder().build::<_, hyper::Body>(https);
     let part_page = fetch_part_page(&client, 92593, PartPageType::Color).await?;
 
-    let colors_html = Document::from(&String::from_utf8(part_page.to_vec()).unwrap());
-    let colors = parse_known_colors(&colors_html);
-    println!("{:?}", colors);
-
     let color_guide = fetch_color_guide_page(&client).await?;
     let color_guide_html = Document::from(&String::from_utf8(color_guide.to_vec()).unwrap());
-    let color_guide = parse_color_guide(&color_guide_html);
+    let color_guide = parse_color_guide(&color_guide_html).unwrap();
     println!("{:?}", color_guide);
+
+    let colors_html = Document::from(&String::from_utf8(part_page.to_vec()).unwrap());
+    let colors = parse_known_colors(&colors_html, &color_guide);
+    println!("{:?}", colors);
 
     Ok(())
 }

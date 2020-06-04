@@ -29,14 +29,14 @@ pub struct ColorGuide {
 }
 
 #[derive(Debug)]
-pub struct Color {
+pub struct Color<'a> {
     name: String,
-    id: i32,
+    id: Option<&'a i32>,
 }
 
 #[derive(Debug)]
-pub struct Part {
-    known_colors: Vec<Color>,
+pub struct Part<'a> {
+    known_colors: Vec<Color<'a>>,
 }
 
 pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
@@ -49,14 +49,27 @@ pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
         .try_select("a")
 }
 
-pub fn parse_known_colors(part_color_page: &Document) -> Result<Vec<String>, HtmlParsingError> {
+pub fn parse_known_colors<'a>(
+    part_color_page: &Document,
+    color_guide: &'a ColorGuide,
+) -> Result<Vec<Color<'a>>, HtmlParsingError> {
     match select_color_anchors(part_color_page) {
         None => Err(HtmlParsingError),
         Some(a) => Ok(a
             .iter()
-            .map(|color| String::from(color.text()))
-            .filter(|x| !x.starts_with("(Not Applicable)"))
-            .collect::<Vec<String>>()),
+            .filter_map(|color| {
+                let color_text = String::from(color.text());
+                if color_text.starts_with("(Not Applicable)") {
+                    None
+                } else {
+                    let color_id = color_guide.name_to_id.get(&color_text);
+                    Some(Color {
+                        name: color_text,
+                        id: color_id.clone(),
+                    })
+                }
+            })
+            .collect::<Vec<Color>>()),
     }
 }
 
@@ -81,7 +94,7 @@ pub fn select_color_name_from_row<'a>(color_guide_row: &'a Selection) -> Option<
         .try_select(":first-child")
 }
 
-pub fn row_to_color(color_guide_row: &Selection) -> Option<Color> {
+pub fn row_to_color<'a>(color_guide_row: &Selection) -> Option<(String, i32)> {
     let id_selection = select_color_id_from_row(color_guide_row)?;
     let id = id_selection
         .html()
@@ -91,10 +104,7 @@ pub fn row_to_color(color_guide_row: &Selection) -> Option<Color> {
     let color_name = select_color_name_from_row(color_guide_row)?
         .html()
         .replace("&nbsp;", "");
-    Some(Color {
-        id: id,
-        name: color_name,
-    })
+    Some((color_name, id))
 }
 
 pub fn parse_color_guide(color_guide_page: &Document) -> Result<ColorGuide, HtmlParsingError> {
@@ -104,9 +114,9 @@ pub fn parse_color_guide(color_guide_page: &Document) -> Result<ColorGuide, Html
         .unwrap()
         .iter()
         .for_each(|tr| {
-            let color = row_to_color(&tr).unwrap();
-            id_to_name.insert(color.id, color.name.clone());
-            name_to_id.insert(color.name, color.id);
+            let (color_name, color_id) = row_to_color(&tr).unwrap();
+            id_to_name.insert(color_id, color_name.clone());
+            name_to_id.insert(color_name, color_id);
         });
     Ok(ColorGuide {
         id_to_name: id_to_name,
