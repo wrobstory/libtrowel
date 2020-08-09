@@ -29,14 +29,14 @@ pub struct ColorGuide {
 }
 
 #[derive(Debug)]
-pub struct Color<'a> {
+pub struct Color {
     name: String,
-    id: Option<&'a i32>,
+    id: Option<i32>,
 }
 
 #[derive(Debug)]
-pub struct Part<'a> {
-    known_colors: Vec<Color<'a>>,
+pub struct Part {
+    known_colors: Vec<Color>,
 }
 
 pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
@@ -49,10 +49,10 @@ pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
         .try_select("a")
 }
 
-pub fn parse_known_colors<'a>(
+pub fn parse_known_colors(
     part_color_page: &Document,
-    color_guide: &'a ColorGuide,
-) -> Result<Vec<Color<'a>>, HtmlParsingError> {
+    color_guide: &ColorGuide,
+) -> Result<Vec<Color>, HtmlParsingError> {
     match select_color_anchors(part_color_page) {
         None => Err(HtmlParsingError),
         Some(a) => Ok(a
@@ -65,7 +65,7 @@ pub fn parse_known_colors<'a>(
                     let color_id = color_guide.name_to_id.get(&color_text);
                     Some(Color {
                         name: color_text,
-                        id: color_id.clone(),
+                        id: color_id.map(|inner_color| inner_color.clone()),
                     })
                 }
             })
@@ -110,14 +110,14 @@ pub fn row_to_color<'a>(color_guide_row: &Selection) -> Option<(String, i32)> {
 pub fn parse_color_guide(color_guide_page: &Document) -> Result<ColorGuide, HtmlParsingError> {
     let mut id_to_name: HashMap<i32, String> = HashMap::new();
     let mut name_to_id: HashMap<String, i32> = HashMap::new();
-    select_color_guide_rows(color_guide_page)
-        .unwrap()
-        .iter()
-        .for_each(|tr| {
-            let (color_name, color_id) = row_to_color(&tr).unwrap();
-            id_to_name.insert(color_id, color_name.clone());
-            name_to_id.insert(color_name, color_id);
+    let color_guide_rows =
+        select_color_guide_rows(color_guide_page).ok_or_else(|| HtmlParsingError)?;
+    color_guide_rows.iter().for_each(|tr| {
+        row_to_color(&tr).map(|(color_name, color_id)| {
+            id_to_name.insert(color_id.clone(), color_name.clone());
+            name_to_id.insert(color_name.clone(), color_id.clone());
         });
+    });
     Ok(ColorGuide {
         id_to_name: id_to_name,
         name_to_id: name_to_id,
