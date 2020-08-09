@@ -28,18 +28,29 @@ pub struct ColorGuide {
     name_to_id: HashMap<String, i32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Color {
     name: String,
     id: Option<i32>,
 }
 
 #[derive(Debug)]
-pub struct Part {
-    known_colors: Vec<Color>,
+pub struct PriceList {
+    total_lots: i32,
+    total_qty: i32,
+    min_price: f32,
+    avg_price: f32,
+    qty_avg_price: f32,
+    max_price: f32,
 }
 
-pub fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
+#[derive(Debug)]
+pub struct Part {
+    known_colors: Vec<Color>,
+    price_for_color: HashMap<Color, PriceList>,
+}
+
+fn select_color_anchors(part_color_page: &Document) -> Option<Selection> {
     part_color_page
         .try_select("table.pciColorInfoTable")?
         .try_select("tbody")?
@@ -71,6 +82,17 @@ pub fn parse_known_colors(
             })
             .collect::<Vec<Color>>()),
     }
+}
+
+pub fn parse_part_prices(part_price_page: &Document) -> Result<PriceList, HtmlParsingError> {
+    Ok(PriceList {
+        total_lots: 1,
+        total_qty: 1,
+        min_price: 0.0,
+        avg_price: 0.0,
+        qty_avg_price: 0.0,
+        max_price: 0.0,
+    })
 }
 
 pub fn select_color_guide_rows(color_guide_page: &Document) -> Option<Selection> {

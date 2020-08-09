@@ -10,7 +10,7 @@ use std::time::Instant;
 use hyper::{Client, Response};
 use hyper_tls::HttpsConnector;
 
-use libtrowel::{parse_color_guide, parse_known_colors};
+use libtrowel::{parse_color_guide, parse_known_colors, parse_part_prices};
 use nipper::Document;
 
 type HttpsClient = Client<HttpsConnector<HttpConnector>>;
@@ -56,16 +56,21 @@ async fn fetch_color_guide_page(client: &HttpsClient) -> Result<Bytes, hyper::Er
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
-    let part_page = fetch_part_page(&client, 92593, PartPageType::Color).await?;
+    let color_part_page = fetch_part_page(&client, 92593, PartPageType::Color).await?;
+    let price_part_page = fetch_part_page(&client, 92593, PartPageType::Price).await?;
 
     let color_guide = fetch_color_guide_page(&client).await?;
     let color_guide_html = Document::from(&String::from_utf8(color_guide.to_vec()).unwrap());
     let color_guide = parse_color_guide(&color_guide_html).unwrap();
     println!("{:?}", color_guide);
 
-    let colors_html = Document::from(&String::from_utf8(part_page.to_vec()).unwrap());
+    let colors_html = Document::from(&String::from_utf8(color_part_page.to_vec()).unwrap());
     let colors = parse_known_colors(&colors_html, &color_guide);
     println!("{:?}", colors);
+
+    let price_html = Document::from(&String::from_utf8(price_part_page.to_vec()).unwrap());
+    let prices = parse_part_prices(&price_html);
+    println!("{:?}", prices);
 
     Ok(())
 }
