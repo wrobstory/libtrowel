@@ -114,8 +114,8 @@ pub fn parse_color_guide(color_guide_page: &Document) -> Result<ColorGuide, Html
         select_color_guide_rows(color_guide_page).ok_or_else(|| HtmlParsingError)?;
     color_guide_rows.iter().for_each(|tr| {
         row_to_color(&tr).map(|(color_name, color_id)| {
-            id_to_name.insert(color_id.clone(), color_name.clone());
-            name_to_id.insert(color_name.clone(), color_id.clone());
+            id_to_name.insert(color_id, color_name.clone());
+            name_to_id.insert(color_name, color_id);
         });
     });
     Ok(ColorGuide {
