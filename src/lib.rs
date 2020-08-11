@@ -44,6 +44,19 @@ pub struct PriceList {
     max_price: f32,
 }
 
+impl Default for PriceList {
+    fn default() -> PriceList {
+        PriceList {
+            total_lots: 0,
+            total_qty: 0,
+            min_price: 0.0,
+            avg_price: 0.0,
+            qty_avg_price: 0.0,
+            max_price: 0.0,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Part {
     known_colors: Vec<Color>,
@@ -84,15 +97,42 @@ pub fn parse_known_colors(
     }
 }
 
+pub fn select_price_rows(price_part_page: &Document) -> Option<Selection> {
+    price_part_page
+        .try_select("table.pcipgSummaryTable")?
+        .try_select("tbody")?
+        .try_select("tr")
+}
+
 pub fn parse_part_prices(part_price_page: &Document) -> Result<PriceList, HtmlParsingError> {
-    Ok(PriceList {
-        total_lots: 1,
-        total_qty: 1,
-        min_price: 0.0,
-        avg_price: 0.0,
-        qty_avg_price: 0.0,
-        max_price: 0.0,
-    })
+    let mut price_list = PriceList::default();
+    match select_price_rows(part_price_page) {
+        None => Err(HtmlParsingError),
+        Some(tr) => {
+            let (_, failures): (
+                Vec<Result<(), HtmlParsingError>>,
+                Vec<Result<(), HtmlParsingError>>,
+            ) = tr
+                .iter()
+                .map(|price_row| {
+                    let price_td = price_row.try_select("td").ok_or(HtmlParsingError)?;
+                    let price_name_td = price_td.first();
+                    let price_amount_td = price_td.last();
+                    let price_name = String::from(price_name_td.text());
+                    let price_amount = String::from(price_amount_td.text());
+                    println!("{}", price_name);
+                    println!("{}", price_amount);
+                    price_list.total_lots = 1;
+                    Ok(())
+                })
+                .partition(Result::is_ok);
+
+            match failures[..] {
+                [] => Ok(price_list),
+                _ => Err(HtmlParsingError),
+            }
+        }
+    }
 }
 
 pub fn select_color_guide_rows(color_guide_page: &Document) -> Option<Selection> {
